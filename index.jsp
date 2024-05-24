@@ -237,10 +237,11 @@ footer {
         <nav>
             <ul>
                 <%
+                    HttpSession session = request.getSession(false);
+                    String userId = (session != null) ? (String) session.getAttribute("userId") : null;
                     String RsessionId = request.getRequestedSessionId();
                     String compareSessionId = session.getId();
                     String sessionId = request.getParameter("sessionId");
-                    String userId = (String) session.getAttribute("userId");
 
                     if (userId == null) {
                 %>
