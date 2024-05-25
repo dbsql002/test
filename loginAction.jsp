@@ -56,7 +56,7 @@ try {
 // 로그인 성공 시 세션 정보를 사용하여 페이지 리디렉션
 if (loginSuccess) {
     String sessionId = session.getId(); // 현재 세션 ID 획득
-    response.sendRedirect("/member?userId=" + inputUsername + "&sessionId=" + sessionId); // 성공 페이지로 리디렉션
+    response.sendRedirect("/test?userId=" + inputUsername + "&sessionId=" + sessionId); // 성공 페이지로 리디렉션
 } else {
     out.println("<script>alert('로그인에 실패했습니다. 아이디 또는 비밀번호를 확인하세요.'); history.back();</script>");
 }
