@@ -1,10 +1,10 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*, redis.clients.jedis.*" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>항공 예매 사이트</title>
   <style>
     body {
     font-family: 'Arial', sans-serif;
@@ -24,7 +24,7 @@ header {
 }
 
 header img {
-    width: 120px;
+    width: 400px;
     height: auto;
 }
 
@@ -211,64 +211,92 @@ footer {
     border-radius: 8px; /* 섹션 모서리를 둥글게 처리 */
     box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* 섬세한 그림자 효과 */
 }
-
 </style>
 
 <script>
-    function searchFlights() {
-        var from = document.getElementById('from').value;
-        var to = document.getElementById('to').value;
-        var displaySection = document.getElementById('flight-info');
+function searchFlights(event) {
+    event.preventDefault();  // 이벤트의 기본 동작(여기서는 폼 제출)을 방지합니다.
 
-        if (from === '서울' && to === '도쿄') {
-            displaySection.innerHTML = '<a href="http://192.168.1.5/osakaTicket.jsp">도쿄 행 티켓 보기</a>';
-        } else if (from === '서울' && to === '파리') {
-            displaySection.innerHTML = '<a href="http://192.168.1.5/parisTicket.jsp">파리 행 티켓 보기</a>';
+    var from = document.getElementById('from').value;
+    var to = document.getElementById('to').value;
+    var displaySection = document.getElementById('flight-info');
+    var userId = '<%= session.getAttribute("userId") %>';
+
+    if (from === '서울' && to === '도쿄') {
+        var content = `
+            <a href='economyTicket.jsp' class="flight-card">
+                <p>Date: 2024-09-01 - Economy - ₩328,000</p>
+            </a>
+            <a href='firstClassTicket.jsp' class="flight-card">
+                <p>Date: 2024-09-03 - First Class - ₩828,000</p>
+            </a>`;
+
+        if (userId && userId !== 'null') {
+            content += `
+            <a href='/ticket?userId=${userId}' class="flight-card">
+                <p>Date: 2024-09-08 - Business - ₩458,000</p>
+            </a>`;
         } else {
-            displaySection.innerHTML = '검색 결과가 없습니다.';
+            content += `
+            <div class="flight-card">
+                <p>Date: 2024-09-08 - Business - ₩458,000</p>
+                <p>(로그인 필요)</p>
+            </div>`;
         }
-        return false; // 폼 제출 방지
+
+        displaySection.innerHTML = content;
+    } else {
+        displaySection.innerHTML = '검색 결과가 없습니다.';
     }
+}
+
 </script>
 </head>
+
 <body>
     <header>
-        <img src="logo.png" alt="항공사 로고">
+        <img src="https://ca-cloud-bucket.s3.ap-northeast-2.amazonaws.com/%EA%B0%9C%EB%B0%9C%EC%9E%90%EB%A3%8C/CloudAir.png" alt="항공사 로고">
         <nav>
             <ul>
                 <%
-                    HttpSession session = request.getSession(false);
-                    String userId = (session != null) ? (String) session.getAttribute("userId") : null;
+                   
                     String RsessionId = request.getRequestedSessionId();
                     String compareSessionId = session.getId();
                     String sessionId = request.getParameter("sessionId");
+                    String userId = (String) session.getAttribute("userId");
+                    
+                    Jedis jedis = new Jedis("ca-redis.s1eqg1.clustercfg.apn2.cache.amazonaws.com", 6379); 
+                     
+                    String redisSessionId = null;
 
-                    if (userId == null) {
+                     if (userId != null && !userId.equals("null")) {
+                         
+                     redisSessionId = jedis.get(userId);
+                }
+                
+
+                     if (userId == null || userId.equals("null")) {
                 %>
-                    <li><a href="#home">메인</a></li>
-                    <li><a href="#booking">예약</a></li>
-                    <li><a href="/login.jsp">로그인</a></li>
-                <%
-                    } else if (sessionId != null && (sessionId.equals(RsessionId) || compareSessionId.equals(RsessionId))) {
+                    <li><a href="/">메인</a></li>
+                    <li><a href="/login">로그인</a></li>
+                <% 
+                } else {
+                    if (!userId.equals("null") && redisSessionId != null) {
                 %>
-                    <li><a href="/index.jsp?userId=<%= userId %>&sessionId=<%= compareSessionId %>">메인 페이지</a></li>
-                    <li><a href="/board?userId=<%= userId %>&sessionId=<%= compareSessionId %>">고객센터</a></li>
-                    <li><a href="/write?userId=<%= userId %>&sessionId=<%= compareSessionId %>">로그아웃</a></li>
-                    <li><a href="http://www.yjasu.shop/member/event.jsp?userId=<%= userId %>&sessionId=<%= compareSessionId %>">마일리지 상품</a></li>
-                    <li>
-                        <span><%= userId %>님 환영합니다.</span>
-                        <a href="/logout.jsp">로그아웃</a>
-                    </li>
-                <%
+                        <li><a href="/?userId=<%= userId %>">메인</a></li>
+                        <li><a href="/board?userId=<%= userId %>">예약</a></li>
+                        <li>
+                            <span><%= userId %>님 환영합니다.</span>
+                        <a href="/">로그아웃</a>
+                        </li>
+                    <% 
                     } else {
-                %>
-                    <li><a href="/">메인 페이지</a></li>
-                    <li><a href="/board">고객센터</a></li>
-                    <li><a href="/write">로그인</a></li>
-                   
-                <%
+                    %>
+                        <li><a href="/">HOME</a></li>
+                        <li><a href="/login">Login</a></li>
+                    <% 
                     }
-
+                } 
                 %>
             </ul>
         </nav>
@@ -288,15 +316,15 @@ footer {
         </section>
         <section class="recommended-destinations">
             <div class="destination-card" onclick="location.href='tokyo.jsp';">
-                <div class="destination-image" style="background-image: url('https://i.postimg.cc/yx1pNJCc/image.webp');"></div>
+                <div class="destination-image" style="background-image: url('https://ca-cloud-bucket.s3.ap-northeast-2.amazonaws.com/%EA%B0%9C%EB%B0%9C%EC%9E%90%EB%A3%8C/dokyo.png');"></div>
                 <p>도쿄 - 일본의 현대적인 수도</p>
             </div>
             <div class="destination-card" onclick="location.href='bali.jsp';">
-                <div class="destination-image" style="background-image: url('images/bali.jpg');"></div>
+                <div class="destination-image" style="background-image: url('https://ca-cloud-bucket.s3.ap-northeast-2.amazonaws.com/%EA%B0%9C%EB%B0%9C%EC%9E%90%EB%A3%8C/bali.png');"></div>
                 <p>발리 - 인도네시아의 천국</p>
             </div>
             <div class="destination-card" onclick="location.href='paris.jsp';">
-                <div class="destination-image" style="background-image: url('images/paris.jpg');"></div>
+                <div class="destination-image" style="background-image: url('https://ca-cloud-bucket.s3.ap-northeast-2.amazonaws.com/%EA%B0%9C%EB%B0%9C%EC%9E%90%EB%A3%8C/paris.png');"></div>
                 <p>파리 - 사랑의 도시</p>
             </div>
         </section>
@@ -304,16 +332,16 @@ footer {
     <h2>특가 티켓</h2>
     <div class="deal-container">
         <div class="deal-card" onclick="location.href='specialDealTokyo.jsp';">
-            <div class="deal-image" style="background-image: url('images/deal-tokyo.jpg');"></div>
+            <div class="deal-image" style="background-image: url('https://ca-cloud-bucket.s3.ap-northeast-2.amazonaws.com/%EA%B0%9C%EB%B0%9C%EC%9E%90%EB%A3%8C/praha.png');"></div>
             <div class="deal-content">
                 <p>프라하 - 한정 특가!</p>
                 <span class="price">₩299,000</span>
             </div>
         </div>
         <div class="deal-card" onclick="location.href='specialDealBali.jsp';">
-            <div class="deal-image" style="background-image: url('images/deal-bali.jpg');"></div>
+            <div class="deal-image" style="background-image: url('https://ca-cloud-bucket.s3.ap-northeast-2.amazonaws.com/%EA%B0%9C%EB%B0%9C%EC%9E%90%EB%A3%8C/sydney.png');"></div>
             <div class="deal-content">
-                <p>발리 - 초특가 세일!</p>
+                <p>시드니 - 초특가 세일!</p>
                 <span class="price">₩399,000</span>
             </div>
         </div>
@@ -325,3 +353,4 @@ footer {
     </footer>
 </body>
 </html>
+
